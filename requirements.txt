@@ -8,3 +8,8 @@ attrdict
 tensorboardX==1.5
 termcolor
 scikit-image
+torch
+torchvision
+imageio
+Pillow
+vispy

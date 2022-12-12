@@ -14,10 +14,11 @@ from torchvision import transforms
 import Utils
 
 parser = argparse.ArgumentParser(description='BiFuse script for 360 depth prediction!',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--path', default='./My_Test_Data', type=str, help='Path of source images')
 parser.add_argument('--nocrop', action='store_true', help='Disable cropping')
 args = parser.parse_args()
+
 
 class MyData(data.Dataset):
     def __init__(self, root):
@@ -25,7 +26,7 @@ class MyData(data.Dataset):
         self.imgs = [os.path.join(root, k) for k in imgs]
         self.transforms = transforms.Compose([
             transforms.ToTensor()
-            ])
+        ])
 
     def __getitem__(self, index):
         img_path = self.imgs[index]
@@ -38,6 +39,7 @@ class MyData(data.Dataset):
 
     def __len__(self):
         return len(self.imgs)
+
 
 def Run(loader, model, crop):
     model = model.eval()
@@ -56,8 +58,8 @@ def Run(loader, model, crop):
             ### Convert to Numpy and Normalize to 0~1 ###
             dep_np = torch.clamp(refine, 0, 10).data.cpu().numpy()
             d_tmp = dep_np.copy()
-            dep_np = dep_np/10
-            rgb_np = data.permute(0,2,3,1).data.cpu().numpy()
+            dep_np = dep_np / 10
+            rgb_np = data.permute(0, 2, 3, 1).data.cpu().numpy()
 
             for i in range(dep_np.shape[0]):
                 cat_rgb = rgb_np[i]
@@ -71,40 +73,42 @@ def Run(loader, model, crop):
 
                 big = np.concatenate([cat_rgb[upper:lower], white, cat_dep[upper:lower]], axis=0)
                 only_dep = cat_dep[upper:lower]
-                imwrite('My_Test_Result/Combine%.3d.jpg'%count, (big*255).astype(np.uint8))
-                imwrite('My_Test_Result/Depth%.3d.jpg'%count, (only_dep*255).astype(np.uint8))
+                imwrite('My_Test_Result/Combine%.3d.jpg' % count, (big * 255).astype(np.uint8))
+                imwrite('My_Test_Result/Depth%.3d.jpg' % count, (only_dep * 255).astype(np.uint8))
                 d = {
-                            'RGB': cat_rgb,
-                            'depth': d_tmp[i, 0, ...]
-                        }
-                np.save('My_Test_Result/Data%.3d.npy'%count, d)
+                    'RGB': cat_rgb,
+                    'depth': d_tmp[i, 0, ...]
+                }
+                np.save('My_Test_Result/Data%.3d.npy' % count, d)
 
                 count += 1
+
 
 def main():
     test_img = MyData(args.path)
     print('Test Data Num:', len(test_img))
     dataset_val = DataLoader(
-            test_img,
-            batch_size=1,
-            num_workers=2,
-            drop_last=False,
-            pin_memory=True,
-            shuffle=False
-            )
+        test_img,
+        batch_size=1,
+        num_workers=2,
+        drop_last=False,
+        pin_memory=True,
+        shuffle=False
+    )
 
     saver = Utils.ModelSaver('./save')
     from models.FCRN import MyModel as ResNet
     model = ResNet(
-    		layers=50,
-    		decoder="upproj",
-    		output_size=None,
-    		in_channels=3,
-    		pretrained=True
-    		).cuda()
+        layers=50,
+        decoder="upproj",
+        output_size=None,
+        in_channels=3,
+        pretrained=True
+    ).cuda()
 
     saver.LoadLatestModel(model, None)
     Run(dataset_val, model, not args.nocrop)
+
 
 if __name__ == '__main__':
     main()
